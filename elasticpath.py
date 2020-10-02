@@ -19,6 +19,21 @@ def get_oauth_access_token(db, client_id, client_secret, expires=3000):
     return access_token
 
 
+def create_file(token, file, public=True):
+    url = 'https://api.moltin.com/v2/files/'
+    headers = {'Authorization': f'Bearer {token}'}
+
+    files = {
+        'file': file,
+        'public': public
+    }
+    
+    response = requests.post(url, headers=headers, files=files)
+    response.raise_for_status()
+
+    return response.json()
+
+
 def get_products(token, product_id=None):
     headers = {'Authorization': f'Bearer {token}'}
     url = 'https://api.moltin.com/v2/products/'
