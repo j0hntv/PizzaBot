@@ -64,6 +64,22 @@ def create_product(token, product_id, name, description, price):
     return response.json()
 
 
+def create_main_image_relationship(token, product_id, image_id):
+    url = f'https://api.moltin.com/v2/products/{product_id}/relationships/main-image'
+    headers = {'Authorization': f'Bearer {token}'}
+
+    payload = {
+        'data': {
+            'type': 'main_image',
+            'id': image_id,
+        }
+    }
+
+    response = requests.post(url, headers=headers, json=payload)
+    response.raise_for_status()
+    return response.json()
+
+
 def get_products(token, product_id=None):
     headers = {'Authorization': f'Bearer {token}'}
     url = 'https://api.moltin.com/v2/products/'
