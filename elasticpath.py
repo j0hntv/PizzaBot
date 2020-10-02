@@ -1,4 +1,5 @@
 import requests
+from slugify import slugify
 
 
 def get_oauth_access_token(db, client_id, client_secret, expires=3000):
@@ -31,6 +32,35 @@ def create_file(token, file, public=True):
     response = requests.post(url, headers=headers, files=files)
     response.raise_for_status()
 
+    return response.json()
+
+
+def create_product(token, product_id, name, description, price):
+    headers = {'Authorization': f'Bearer {token}'}
+    url = 'https://api.moltin.com/v2/products/'
+
+    payload = {
+        'data': {
+            'type': 'product',
+            'name': name,
+            'slug': slugify(name),
+            'sku': str(product_id),
+            'manage_stock': False,
+            'description': description,
+            'price': [
+                {
+                    'amount': price,
+                    'currency': 'RUB',
+                    'includes_tax': True,
+                }
+            ],
+            'status': 'live',
+            'commodity_type': 'physical',
+        }
+    }
+
+    response = requests.post(url, headers=headers, json=payload)
+    response.raise_for_status()
     return response.json()
 
 
