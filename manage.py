@@ -1,3 +1,4 @@
+import argparse
 import json
 import os
 
@@ -39,8 +40,15 @@ def create_menu(token, path):
             print(error)
 
 
+def create_arg_parser():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--create_menu', help='CMS product filling')
+    return parser
+
+
 if __name__ == "__main__":
     load_dotenv()
+    args = create_arg_parser().parse_args()
 
     CLIENT_ID = os.getenv('CLIENT_ID')
     CLIENT_SECRET = os.getenv('CLIENT_SECRET')
@@ -51,5 +59,5 @@ if __name__ == "__main__":
     db = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, password=REDIS_PASSWORD, decode_responses=True)
     token = elasticpath.get_oauth_access_token(db, CLIENT_ID, CLIENT_SECRET)
 
-    menu_path = 'menu.json'
-    create_menu(token, menu_path)
+    if args.create_menu:
+        create_menu(token, args.create_menu)
