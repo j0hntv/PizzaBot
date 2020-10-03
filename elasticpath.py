@@ -99,6 +99,37 @@ def create_flow(token, name, description):
     return response.json()
 
 
+def create_flow_field(token, name, field_type, description, flow_id):
+    headers = {'Authorization': f'Bearer {token}'}
+    url = 'https://api.moltin.com/v2/fields/'
+
+    relationships = {
+        'flow': {
+            'data': {
+                'type': 'flow',
+                'id': flow_id,
+            }
+        }
+    }
+
+    payload = {
+        'data': {
+            'type': 'field',
+            'name': name,
+            'slug': slugify(name),
+            'field_type': field_type,
+            'description': description,
+            'required': False,
+            'enabled': True,
+            'relationships': relationships,
+        }
+    }
+
+    response = requests.post(url, headers=headers, json=payload)
+    response.raise_for_status()
+    return response.json()
+
+
 def get_products(token, product_id=None):
     headers = {'Authorization': f'Bearer {token}'}
     url = 'https://api.moltin.com/v2/products/'
