@@ -80,6 +80,25 @@ def create_main_image_relationship(token, product_id, image_id):
     return response.json()
 
 
+def create_flow(token, name, description):
+    headers = {'Authorization': f'Bearer {token}'}
+    url = 'https://api.moltin.com/v2/flows/'
+
+    payload = {
+        'data': {
+            'type': 'flow',
+            'name': name,
+            'slug': slugify(name),
+            'description': description,
+            'enabled': True,
+        }
+    }
+
+    response = requests.post(url, headers=headers, json=payload)
+    response.raise_for_status()
+    return response.json()
+
+
 def get_products(token, product_id=None):
     headers = {'Authorization': f'Bearer {token}'}
     url = 'https://api.moltin.com/v2/products/'
