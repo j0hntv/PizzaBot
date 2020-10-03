@@ -10,7 +10,7 @@ from tqdm import tqdm
 import elasticpath
 
 
-def get_json_menu(path):
+def get_json(path):
     with open(path) as file:
         json_data = json.load(file)
 
@@ -18,7 +18,7 @@ def get_json_menu(path):
 
 
 def create_menu(token, path):
-    menu = get_json_menu(path)
+    menu = get_json(path)
 
     for item in tqdm(menu):
         product_id = item['id']
@@ -40,9 +40,34 @@ def create_menu(token, path):
             print(error)
 
 
+def create_flow_with_fields(token, flow_name='Pizzeria', description='Pizzeria flow'):
+    print(f'- Create flow {flow_name}...', end=' ')
+    create_flow_response = elasticpath.create_flow(token, flow_name, description)
+    print('OK!\n')
+    flow_id = create_flow_response['data']['id']
+
+    fields = {'Address': 'string', 'Alias': 'string', 'Longitude': 'float', 'Latitude': 'float'}
+
+    for field_name, field_type in fields.items():
+        print(f'- Create field {field_name}...', end=' ')
+        elasticpath.create_flow_field(
+            token,
+            field_name,
+            field_type,
+            field_name,
+            flow_id,
+        )
+        print('OK!')
+
+
+def add_addresses(token, path):
+    pass
+
+
 def create_arg_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('--create_menu', help='CMS product filling')
+    parser.add_argument('--add_addresses', help='Add pizzeria addresses')
     return parser
 
 
@@ -61,3 +86,7 @@ if __name__ == "__main__":
 
     if args.create_menu:
         create_menu(token, args.create_menu)
+
+    if args.add_addresses:
+        create_flow_with_fields(token)
+        add_addresses(token, args.add_addresses)
