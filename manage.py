@@ -18,6 +18,7 @@ def get_json(path):
 
 
 def create_menu(token, path):
+    print('- Create menu')
     menu = get_json(path)
 
     for item in tqdm(menu):
@@ -60,8 +61,22 @@ def create_flow_with_fields(token, flow_name='Pizzeria', description='Pizzeria f
         print('OK!')
 
 
-def add_addresses(token, path):
-    pass
+def add_addresses(token, path, flow='Pizzeria'):
+    addresses = get_json(path)
+    print('\n- Filling fields with addresses...')
+
+    for item in tqdm(addresses):
+        values = {
+            'Address': item['address']['full'],
+            'Alias': item['alias'],
+            'Latitude': item['coordinates']['lat'],
+            'Longitude': item['coordinates']['lon'],
+        }
+
+        elasticpath.create_entry(token, flow, values)
+
+    print('- Done.')
+
 
 
 def create_arg_parser():
