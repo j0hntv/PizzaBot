@@ -3,7 +3,7 @@ from slugify import slugify
 
 
 def get_oauth_access_token(db, client_id, client_secret, expires=3000):
-    access_token = db.get('moltin_token')
+    access_token = db.get('elasticpath_token')
 
     if access_token:
         return access_token
@@ -91,6 +91,23 @@ def create_flow(token, name, description):
             'slug': slugify(name),
             'description': description,
             'enabled': True,
+        }
+    }
+
+    response = requests.post(url, headers=headers, json=payload)
+    response.raise_for_status()
+    return response.json()
+
+
+def create_entry(token, flow_slug, values):
+    headers = {'Authorization': f'Bearer {token}'}
+    url = f'https://api.moltin.com/v2/flows/{flow_slug}/entries'
+
+    payload = {
+        'data': {
+            'type': 'entry',
+            'Alias': 'value',
+            **values,
         }
     }
 

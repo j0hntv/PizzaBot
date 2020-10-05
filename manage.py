@@ -78,7 +78,6 @@ def add_addresses(token, path, flow='Pizzeria'):
     print('- Done.')
 
 
-
 def create_arg_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('--create_menu', help='CMS product filling')
