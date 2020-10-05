@@ -5,11 +5,12 @@ import telegram
 import elasticpath
 
 from dotenv import load_dotenv
-from validate_email import validate_email
 from functools import partial
 from telegram.ext import Filters, Updater
 from telegram.ext import CallbackQueryHandler, CommandHandler, MessageHandler
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+
+from utils import fetch_coordinates
 
 
 logger = logging.getLogger('telegram_shop')
@@ -107,10 +108,10 @@ def handle_cart(bot, update):
     elif query.data == 'pay':
         bot.send_message(
             chat_id=chat_id,
-            text='Пожалуйста, пришлите ваш email:'
+            text='Пришлите нам ваш адрес текстом или геолокацию.'
         )
         bot.delete_message(chat_id=chat_id, message_id=message_id)
-        return 'HANDLE_WAITING_EMAIL'
+        return 'HANDLE_WAITING_LOCATION'
 
     product_id = query.data
     token = elasticpath_token()
@@ -121,31 +122,37 @@ def handle_cart(bot, update):
     return 'HANDLE_CART'
 
 
-def handle_waiting_email(bot, update):
+def handle_waiting_location(bot, update):
     chat_id = update.message.chat_id
-    text = update.message.text
+    message = update.edited_message or update.message
+
+    if message.location:
+        latitude = message.location.latitude
+        longitude = message.location.longitude
+    else:
+        try:
+            latitude, longitude = fetch_coordinates(YANDEX_GEOCODER_KEY, message.text)
+        except IndexError:
+            bot.send_message(
+                chat_id = chat_id,
+                text=f'Кажется, вы ошиблись в адресе, повторите пожалуйста:'
+            )
+            return 'HANDLE_WAITING_LOCATION'
 
     keyboard = [
         [InlineKeyboardButton(f'◀️ В меню', callback_data='start')]
     ]
 
-    if validate_email(text):
-        bot.send_message(
-            chat_id = chat_id,
-            text=f'*Ваш заказ оформлен!*',
-            parse_mode=telegram.ParseMode.MARKDOWN,
-            reply_markup=InlineKeyboardMarkup(keyboard)
-        )
-        customer_name = update.message.chat.first_name
-        token = elasticpath_token()
-        elasticpath.create_customer(token, name=customer_name, email=text)
-        return 'START'
-
     bot.send_message(
         chat_id = chat_id,
-        text=f'Кажется, вы неправильно ввели email, повторите пожалуйста:'
+        text=f'Ваши координаты:\n{latitude}, {longitude}\n\n*Заказ уже в пути.* 🚀',
+        parse_mode=telegram.ParseMode.MARKDOWN,
+        reply_markup=InlineKeyboardMarkup(keyboard)
     )
-    return 'HANDLE_WAITING_EMAIL'
+    # customer_name = message.chat.first_name
+    # token = elasticpath_token()
+    # elasticpath.create_customer(token, name=customer_name, email=text)
+    return 'START'
 
 
 def handle_users_reply(bot, update):
@@ -172,7 +179,7 @@ def handle_users_reply(bot, update):
         'HANDLE_MENU': handle_menu,
         'HANDLE_DESCRIPTION': handle_description,
         'HANDLE_CART': handle_cart,
-        'HANDLE_WAITING_EMAIL': handle_waiting_email
+        'HANDLE_WAITING_LOCATION': handle_waiting_location
     }
     state_handler = states_functions[user_state]
     try:
@@ -232,6 +239,7 @@ if __name__ == '__main__':
     REDIS_HOST = os.getenv('REDIS_HOST')
     REDIS_PORT = os.getenv('REDIS_PORT')
     REDIS_PASSWORD = os.getenv('REDIS_PASSWORD')
+    YANDEX_GEOCODER_KEY = os.getenv('YANDEX_GEOCODER_KEY')
 
     db = get_database_connection()
     elasticpath_token = partial(elasticpath.get_oauth_access_token, db, CLIENT_ID, CLIENT_SECRET)
@@ -240,6 +248,7 @@ if __name__ == '__main__':
     dispatcher = updater.dispatcher
     dispatcher.add_handler(CallbackQueryHandler(handle_users_reply))
     dispatcher.add_handler(MessageHandler(Filters.text, handle_users_reply))
+    dispatcher.add_handler(MessageHandler(Filters.location, handle_waiting_location))
     dispatcher.add_handler(CommandHandler('start', handle_users_reply))
     updater.start_polling()
     updater.idle()
