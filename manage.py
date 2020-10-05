@@ -27,10 +27,11 @@ def create_menu(token, path):
         description = item['description']
         price = item['price']
         img_url = item['product_image']['url']
+        img_name = img_url.split('/')[-1]
         img = requests.get(img_url).content
 
         try:
-            create_file_response = elasticpath.create_file(token, img)
+            create_file_response = elasticpath.create_file(token, img, img_name)
             create_product_response = elasticpath.create_product(token, product_id, name, description, price)
 
             image_id = create_file_response['data']['id']

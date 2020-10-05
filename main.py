@@ -47,8 +47,8 @@ def handle_menu(bot, update):
     token = elasticpath_token()
 
     product_id = query.data
-    product = elasticpath.get_products(token, product_id)['data']
-    product_image_id = product['relationships']['main_image']['data']['id']
+    product = elasticpath.get_products(token, product_id)
+    product_image_id = product['data']['relationships']['main_image']['data']['id']
     product_image_url = elasticpath.get_image_url(token, product_image_id)
 
     caption = elasticpath.get_product_markdown_output(product)

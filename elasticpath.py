@@ -20,12 +20,12 @@ def get_oauth_access_token(db, client_id, client_secret, expires=3000):
     return access_token
 
 
-def create_file(token, file, public=True):
+def create_file(token, file, file_name, public=True):
     url = 'https://api.moltin.com/v2/files/'
     headers = {'Authorization': f'Bearer {token}'}
 
     files = {
-        'file': file,
+        'file': (file_name, file),
         'public': public
     }
     
@@ -149,10 +149,12 @@ def create_flow_field(token, name, field_type, description, flow_id):
 
 def get_products(token, product_id=None, limit=5, offset=0):
     headers = {'Authorization': f'Bearer {token}'}
-    url = f'https://api.moltin.com/v2/products/?page[limit]={limit}&page[offset]={offset}/'
+    url = f'https://api.moltin.com/v2/products/'
 
     if product_id:
         url += product_id
+    else:
+        url += f'?page[limit]={limit}&page[offset]={offset}/'
     
     response = requests.get(url, headers=headers)
     response.raise_for_status()
@@ -226,11 +228,10 @@ def get_image_url(token, image_id):
 
 
 def get_product_markdown_output(product):
-    name = product['name']
-    description = product['description']
-    weight = product['weight']['kg']
-    price = product['meta']['display_price']['with_tax']['formatted']
-    output = f'*{name}*\n_{description}_\n{weight} kg\n\n*{price}*'
+    name = product['data']['name']
+    description = product['data']['description']
+    price = product['data']['price'][0]['amount']
+    output = f'*{name}*\n_{description}_\n\n*{price} ₽*'
     return output
 
 
