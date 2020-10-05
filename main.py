@@ -19,6 +19,7 @@ def start(bot, update):
     token = elasticpath_token()
     products = {product['name']: product['id'] for product in elasticpath.get_products(token)['data']}
     keyboard = [[InlineKeyboardButton(product_name, callback_data=product_id)] for product_name, product_id in products.items()]
+    keyboard.append([InlineKeyboardButton('🛒 Корзина', callback_data='cart')])
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     if update.message:
@@ -46,6 +47,11 @@ def handle_menu(bot, update):
 
     token = elasticpath_token()
 
+    if query.data == 'cart':
+        send_cart_keyboard(bot, chat_id)
+        bot.delete_message(chat_id=chat_id, message_id=message_id)
+        return 'HANDLE_CART'
+
     product_id = query.data
     product = elasticpath.get_products(token, product_id)
     product_image_id = product['data']['relationships']['main_image']['data']['id']
@@ -54,8 +60,7 @@ def handle_menu(bot, update):
     caption = elasticpath.get_product_markdown_output(product)
 
     keyboard = [
-        [InlineKeyboardButton(f'{quantity} шт.', callback_data=f'quantity/{product_id}/{quantity}') for quantity in range(1, 4)],
-        [InlineKeyboardButton('🛒 Корзина', callback_data='cart')],
+        [InlineKeyboardButton('🛒 Положить в корзину', callback_data=f'buy/{product_id}')],
         [InlineKeyboardButton('◀️ Назад', callback_data='back')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -76,22 +81,16 @@ def handle_menu(bot, update):
 def handle_description(bot, update):
     query = update.callback_query
     chat_id = query.message.chat_id
-    message_id = query.message.message_id
 
     action = query.data.split('/')
 
     if action[0] == 'back':
         return start(bot, update)
 
-    elif action[0] == 'cart':
-        send_cart_keyboard(bot, chat_id)
-        bot.delete_message(chat_id=chat_id, message_id=message_id)
-        return 'HANDLE_CART'
-
-    elif action[0] == 'quantity':
-        product_id, quantity = action[1], action[2]
+    elif action[0] == 'buy':
+        product_id = action[1]
         token = elasticpath_token()
-        elasticpath.add_product_to_cart(token, chat_id, product_id, int(quantity))
+        elasticpath.add_product_to_cart(token, chat_id, product_id)
         update.callback_query.answer('Товар добавлен в корзину')
         return 'HANDLE_DESCRIPTION'
 

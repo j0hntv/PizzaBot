@@ -161,11 +161,8 @@ def get_products(token, product_id=None, limit=5, offset=0):
     return response.json()
 
 
-def add_product_to_cart(token, cart, product_id, quantity):
-    headers = {
-        'Authorization': f'Bearer {token}',
-        'Content-Type': 'application/json'
-    }
+def add_product_to_cart(token, cart, product_id, quantity=1):
+    headers = {'Authorization': f'Bearer {token}'}
     payload = {
         "data": {
             "id": product_id,
@@ -177,7 +174,7 @@ def add_product_to_cart(token, cart, product_id, quantity):
     url = f'https://api.moltin.com/v2/carts/{cart}/items'
     response = requests.post(url, headers=headers, json=payload)
     response.raise_for_status()
-    return response.json()['data']
+    return response.json()
 
 
 def get_a_cart(token, cart):
@@ -211,10 +208,10 @@ def get_formatted_cart_items(cart, cart_items):
         description = item['description']
         quantity = item['quantity']
         cost = item['meta']['display_price']['with_tax']['value']['formatted']
-        items.append(f'{name}: *{quantity}* шт.\n_{description}_\n*{cost}*')
+        items.append(f'{name}: *{quantity}* шт.\n_{description}_\n*{cost} ₽*')
 
     total_cost = cart['meta']['display_price']['with_tax']['formatted']
-    items.append(f'\nИтого: *{total_cost}*')
+    items.append(f'\nИтого: *{total_cost} ₽*')
 
     return '\n\n'.join(items)
 
