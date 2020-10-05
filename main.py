@@ -17,7 +17,7 @@ logger = logging.getLogger('telegram_shop')
 
 def start(bot, update):
     token = elasticpath_token()
-    products = {product['name']: product['id'] for product in elasticpath.get_products(token)}
+    products = {product['name']: product['id'] for product in elasticpath.get_products(token)['data']}
     keyboard = [[InlineKeyboardButton(product_name, callback_data=product_id)] for product_name, product_id in products.items()]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -47,7 +47,7 @@ def handle_menu(bot, update):
     token = elasticpath_token()
 
     product_id = query.data
-    product = elasticpath.get_products(token, product_id)
+    product = elasticpath.get_products(token, product_id)['data']
     product_image_id = product['relationships']['main_image']['data']['id']
     product_image_url = elasticpath.get_image_url(token, product_image_id)
 

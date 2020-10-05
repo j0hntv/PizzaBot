@@ -147,16 +147,16 @@ def create_flow_field(token, name, field_type, description, flow_id):
     return response.json()
 
 
-def get_products(token, product_id=None):
+def get_products(token, product_id=None, limit=5, offset=0):
     headers = {'Authorization': f'Bearer {token}'}
-    url = 'https://api.moltin.com/v2/products/'
+    url = f'https://api.moltin.com/v2/products/?page[limit]={limit}&page[offset]={offset}/'
 
     if product_id:
         url += product_id
     
     response = requests.get(url, headers=headers)
     response.raise_for_status()
-    return response.json()['data']
+    return response.json()
 
 
 def add_product_to_cart(token, cart, product_id, quantity):
