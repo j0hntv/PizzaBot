@@ -116,6 +116,14 @@ def create_entry(token, flow_slug, values):
     return response.json()
 
 
+def get_all_entries(token, slug):
+    headers = {'Authorization': f'Bearer {token}'}
+    url = f'https://api.moltin.com/v2/flows/{slug}/entries'
+    response = requests.get(url, headers=headers)
+    response.raise_for_status()
+    return response.json()
+
+
 def create_flow_field(token, name, field_type, description, flow_id):
     headers = {'Authorization': f'Bearer {token}'}
     url = 'https://api.moltin.com/v2/fields/'
