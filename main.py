@@ -10,7 +10,7 @@ from telegram.ext import Filters, Updater
 from telegram.ext import CallbackQueryHandler, CommandHandler, MessageHandler
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
-from utils import fetch_coordinates
+from utils import fetch_coordinates, get_distance
 
 
 logger = logging.getLogger('telegram_shop')
@@ -139,20 +139,32 @@ def handle_waiting_location(bot, update):
             )
             return 'HANDLE_WAITING_LOCATION'
 
-    keyboard = [
-        [InlineKeyboardButton(f'◀️ В меню', callback_data='start')]
-    ]
+    keyboard = [[InlineKeyboardButton(f'◀️ В меню', callback_data='start')]]
+
+    token = elasticpath_token()
+    entries = elasticpath.get_all_entries_coordinates(token, 'Pizzeria')
+    for entry in entries:
+        entry['distance'] = get_distance([latitude, longitude], entry['coordinates'])
+
+    entry_with_min_distance = min(entries, key=lambda x: x['distance'])
+    min_distance = entry_with_min_distance['distance']
+
+    if min_distance < 0.5:
+        text = f'Может, заберете пиццу из нашей пиццерии неподалеку? Она всего в *{int(min_distance*1000)}* метрах от вас, вот ее адрес: *{entry_with_min_distance["Address"]}*'
+    elif min_distance < 5:
+        text = 'Доставка будет стоить *100 ₽.*\nДоставляем или самовывоз?'
+    elif min_distance < 20:
+        text = 'Доставка будет стоить *300 ₽.*\nДоставляем или самовывоз?'
+    else:
+        text = f'Простите, но так далеко мы пиццу не доставим. Ближайшая пиццерия аж в *{min_distance:.1f} км* от вас.'
 
     bot.send_message(
         chat_id = chat_id,
-        text=f'Ваши координаты:\n{latitude}, {longitude}\n\n*Заказ уже в пути.* 🚀',
+        text=text,
         parse_mode=telegram.ParseMode.MARKDOWN,
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
-    # customer_name = message.chat.first_name
-    # token = elasticpath_token()
-    # elasticpath.create_customer(token, name=customer_name, email=text)
-    return 'START'
+    return 'HANDLE_WAITING_LOCATION'
 
 
 def handle_users_reply(bot, update):

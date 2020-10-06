@@ -124,6 +124,11 @@ def get_all_entries(token, slug):
     return response.json()
 
 
+def get_all_entries_coordinates(token, slug):
+    entries = get_all_entries(token, slug)['data']
+    return [{'Address': entry['Address'], 'coordinates': (entry['Latitude'], entry['Longitude'])} for entry in entries]
+
+
 def create_flow_field(token, name, field_type, description, flow_id):
     headers = {'Authorization': f'Bearer {token}'}
     url = 'https://api.moltin.com/v2/fields/'
