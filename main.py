@@ -123,8 +123,11 @@ def handle_cart(bot, update):
 
 
 def handle_waiting_location(bot, update):
-    chat_id = update.message.chat_id
+    if update.callback_query and update.callback_query.data == 'menu':
+        return start(bot, update)
+
     message = update.edited_message or update.message
+    chat_id = message.chat_id
 
     if message.location:
         latitude = message.location.latitude
@@ -139,24 +142,49 @@ def handle_waiting_location(bot, update):
             )
             return 'HANDLE_WAITING_LOCATION'
 
-    keyboard = [[InlineKeyboardButton(f'◀️ В меню', callback_data='start')]]
-
     token = elasticpath_token()
-    entries = elasticpath.get_all_entries_coordinates(token, 'Pizzeria')
+    entries = elasticpath.get_all_entries(token, 'Pizzeria')
     for entry in entries:
         entry['distance'] = get_distance([latitude, longitude], entry['coordinates'])
 
     entry_with_min_distance = min(entries, key=lambda x: x['distance'])
     min_distance = entry_with_min_distance['distance']
 
+    keyboard = [[InlineKeyboardButton(f'◀️ В меню', callback_data='menu')]]
+
     if min_distance < 0.5:
-        text = f'Может, заберете пиццу из нашей пиццерии неподалеку? Она всего в *{int(min_distance*1000)}* метрах от вас, вот ее адрес: *{entry_with_min_distance["Address"]}*'
+        text = f'Может, заберете пиццу из нашей пиццерии неподалеку? Она всего в *{int(min_distance*1000)}* метрах от вас, вот ее адрес: *{entry_with_min_distance["Address"]}*. Или доставим сами бесплатно, нам не сложно)'
+        keyboard.insert(0,
+            [
+                InlineKeyboardButton(f'Доставка', callback_data='delivery'),
+                InlineKeyboardButton(f'Самовывоз', callback_data='self-delivery')
+            ]
+        )
     elif min_distance < 5:
         text = 'Доставка будет стоить *100 ₽.*\nДоставляем или самовывоз?'
+        keyboard.insert(0,
+            [
+                InlineKeyboardButton(f'Доставка +100 ₽', callback_data='delivery'),
+                InlineKeyboardButton(f'Самовывоз', callback_data=f'self-delivery/{entry_with_min_distance["id"]}')
+            ]
+        )
     elif min_distance < 20:
         text = 'Доставка будет стоить *300 ₽.*\nДоставляем или самовывоз?'
+        keyboard.insert(0,
+            [
+                InlineKeyboardButton(f'Доставка +300 ₽', callback_data='delivery'),
+                InlineKeyboardButton(f'Самовывоз', callback_data=f'self-delivery/{entry_with_min_distance["id"]}')
+            ]
+        )
     else:
-        text = f'Простите, но так далеко мы пиццу не доставим. Ближайшая пиццерия аж в *{min_distance:.1f} км* от вас.'
+        text = f'Простите, но так далеко мы пиццу не доставим. Ближайшая пиццерия аж в *{min_distance:.1f} км* от вас.\nПоробуете ввести другой адрес?'
+        bot.send_message(
+            chat_id = chat_id,
+            text=text,
+            parse_mode=telegram.ParseMode.MARKDOWN,
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+        return 'HANDLE_WAITING_LOCATION'
 
     bot.send_message(
         chat_id = chat_id,
@@ -164,7 +192,39 @@ def handle_waiting_location(bot, update):
         parse_mode=telegram.ParseMode.MARKDOWN,
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
-    return 'HANDLE_WAITING_LOCATION'
+    return 'HANDLE_DELIVERY'
+
+
+def handle_delivery(bot, update):
+    query = update.callback_query
+    chat_id = query.message.chat_id
+    message_id = query.message.message_id
+
+    action = query.data.split('/')
+
+    if action[0] == 'menu':
+        return start(bot, update)
+
+    if action[0] == 'self-delivery':
+        token = elasticpath_token()
+        entry = elasticpath.get_entry(token, 'Pizzeria', action[1])
+        menu_button = [[InlineKeyboardButton('◀️ Меню', callback_data='menu')]]
+        text = f'Адрес пиццерии:\n*{entry["Address"]}.*\n\n🍕 Ждем вас)'
+
+        bot.send_message(
+            chat_id=chat_id,
+            text=text,
+            reply_markup=InlineKeyboardMarkup(menu_button),
+            parse_mode=telegram.ParseMode.MARKDOWN
+        )
+        bot.delete_message(chat_id=chat_id, message_id=message_id)
+        return 'HANDLE_FINISH'
+
+
+def handle_finish(bot, update):
+    query = update.callback_query
+    if query.data == 'menu':
+        return start(bot, update)
 
 
 def handle_users_reply(bot, update):
@@ -191,7 +251,9 @@ def handle_users_reply(bot, update):
         'HANDLE_MENU': handle_menu,
         'HANDLE_DESCRIPTION': handle_description,
         'HANDLE_CART': handle_cart,
-        'HANDLE_WAITING_LOCATION': handle_waiting_location
+        'HANDLE_WAITING_LOCATION': handle_waiting_location,
+        'HANDLE_DELIVERY': handle_delivery,
+        'HANDLE_FINISH': handle_finish,
     }
     state_handler = states_functions[user_state]
     try:
