@@ -42,29 +42,27 @@ def create_menu(token, path):
             print(error)
 
 
-def create_flow_with_fields(token, flow_name='Pizzeria', description='Pizzeria flow'):
-    print(f'- Create flow {flow_name}...', end=' ')
-    create_flow_response = elasticpath.create_flow(token, flow_name, description)
-    print('OK!\n')
-    flow_id = create_flow_response['data']['id']
+def create_flows(token, path):
+    flows = get_json(path)
+    for flow in flows:
+        print(f'- Create flow {flow["name"]}...', end=' ')
+        try:
+            create_flow_response = elasticpath.create_flow(token, flow['name'], flow['description'])
+            print('OK!')
 
-    fields = {'Address': 'string', 'Alias': 'string', 'Longitude': 'float', 'Latitude': 'float'}
+            flow_id = create_flow_response['data']['id']
+            for field_name, field_type in flow['fields'].items():
+                print(f'\t- Add field {field_name}...', end=' ')
+                elasticpath.create_flow_field(token, field_name, field_type, field_name, flow_id)
+                print('OK!')
 
-    for field_name, field_type in fields.items():
-        print(f'- Create field {field_name}...', end=' ')
-        elasticpath.create_flow_field(
-            token,
-            field_name,
-            field_type,
-            field_name,
-            flow_id,
-        )
-        print('OK!')
+        except requests.exceptions.HTTPError:
+            print('Already exists')
 
 
 def add_addresses(token, path, flow='Pizzeria'):
     addresses = get_json(path)
-    print('\n- Filling fields with addresses...')
+    print('\n- Add addresses...')
 
     for item in tqdm(addresses):
         values = {
@@ -81,8 +79,9 @@ def add_addresses(token, path, flow='Pizzeria'):
 
 def create_arg_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--create_menu', help='CMS product filling')
-    parser.add_argument('--add_addresses', help='Add pizzeria addresses')
+    parser.add_argument('-f', '--create_flows', help='Add pizzeria models (flows)')
+    parser.add_argument('-a', '--add_addresses', help='Add pizzeria addresses')
+    parser.add_argument('-m', '--create_menu', help='CMS product filling')
     return parser
 
 
@@ -102,6 +101,8 @@ if __name__ == "__main__":
     if args.create_menu:
         create_menu(token, args.create_menu)
 
+    if args.create_flows:
+        create_flows(token, args.create_flows)
+
     if args.add_addresses:
-        create_flow_with_fields(token)
         add_addresses(token, args.add_addresses)

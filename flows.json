@@ -1,0 +1,21 @@
+[
+    {
+        "name": "Pizzeria",
+        "description": "Pizzeria flow",
+        "fields": {
+            "Address": "string",
+            "Alias": "string",
+            "Longitude": "float",
+            "Latitude": "float"
+        }
+    },
+    {
+        "name": "Customer",
+        "description": "Customer flow",
+        "fields": {
+            "Name": "string",
+            "Longitude": "float",
+            "Latitude": "float"
+        }
+    }
+]
