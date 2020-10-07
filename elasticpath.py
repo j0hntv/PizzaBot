@@ -235,6 +235,20 @@ def get_formatted_cart_items(cart, cart_items):
     return '\n\n'.join(items)
 
 
+def get_formatted_cart_items_without_description(cart, cart_items):
+    items = []
+    for item in cart_items:
+        name = item['name']
+        quantity = item['quantity']
+        cost = item['meta']['display_price']['with_tax']['value']['formatted']
+        items.append(f'{name}: *{quantity}* шт.\n*{cost} ₽*')
+
+    total_cost = cart['meta']['display_price']['with_tax']['formatted']
+    items.append(f'\nИтого: *{total_cost} ₽*')
+
+    return '\n\n'.join(items)
+
+
 def get_image_url(token, image_id):
     headers = {'Authorization': f'Bearer {token}'}
     url = f'https://api.moltin.com/v2/files/{image_id}'

@@ -156,23 +156,25 @@ def handle_waiting_location(bot, update):
         text = f'Может, заберете пиццу из нашей пиццерии неподалеку? Она всего в *{int(min_distance*1000)}* метрах от вас, вот ее адрес: *{entry_with_min_distance["Address"]}*. Или доставим сами бесплатно, нам не сложно)'
         keyboard.insert(0,
             [
-                InlineKeyboardButton(f'Доставка', callback_data='delivery'),
-                InlineKeyboardButton(f'Самовывоз', callback_data='self-delivery')
+                InlineKeyboardButton(f'Доставка', callback_data=f'delivery/{entry_with_min_distance["id"]}/'),
+                InlineKeyboardButton(f'Самовывоз', callback_data=f'self-delivery/{entry_with_min_distance["id"]}')
             ]
         )
     elif min_distance < 5:
-        text = 'Доставка будет стоить *100 ₽.*\nДоставляем или самовывоз?'
+        delivery_price = 100
+        text = f'Доставка будет стоить *{delivery_price} ₽.*\nДоставляем или самовывоз?'
         keyboard.insert(0,
             [
-                InlineKeyboardButton(f'Доставка +100 ₽', callback_data='delivery'),
+                InlineKeyboardButton(f'Доставка +{delivery_price} ₽', callback_data=f'delivery/{entry_with_min_distance["id"]}/{delivery_price}'),
                 InlineKeyboardButton(f'Самовывоз', callback_data=f'self-delivery/{entry_with_min_distance["id"]}')
             ]
         )
     elif min_distance < 20:
-        text = 'Доставка будет стоить *300 ₽.*\nДоставляем или самовывоз?'
+        delivery_price = 300
+        text = f'Доставка будет стоить *{delivery_price} ₽.*\nДоставляем или самовывоз?'
         keyboard.insert(0,
             [
-                InlineKeyboardButton(f'Доставка +300 ₽', callback_data='delivery'),
+                InlineKeyboardButton(f'Доставка +{delivery_price} ₽', callback_data=f'delivery/{entry_with_min_distance["id"]}/{delivery_price}'),
                 InlineKeyboardButton(f'Самовывоз', callback_data=f'self-delivery/{entry_with_min_distance["id"]}')
             ]
         )
@@ -205,12 +207,12 @@ def handle_delivery(bot, update):
     if action[0] == 'menu':
         return start(bot, update)
 
-    if action[0] == 'self-delivery':
-        token = elasticpath_token()
-        entry = elasticpath.get_entry(token, 'Pizzeria', action[1])
-        menu_button = [[InlineKeyboardButton('◀️ Меню', callback_data='menu')]]
-        text = f'Адрес пиццерии:\n*{entry["Address"]}.*\n\n🍕 Ждем вас)'
+    token = elasticpath_token()
+    entry = elasticpath.get_entry(token, 'Pizzeria', action[1])
+    menu_button = [[InlineKeyboardButton('◀️ Меню', callback_data='menu')]]
 
+    if action[0] == 'self-delivery':
+        text = f'Адрес пиццерии:\n*{entry["Address"]}.*\n\n🍕 Ждем вас)'
         bot.send_message(
             chat_id=chat_id,
             text=text,
@@ -218,7 +220,41 @@ def handle_delivery(bot, update):
             parse_mode=telegram.ParseMode.MARKDOWN
         )
         bot.delete_message(chat_id=chat_id, message_id=message_id)
-        return 'HANDLE_FINISH'
+
+    elif action[0] == 'delivery':
+        text = f'Ваша пицца уже в пути! 🚀'
+        bot.send_message(
+            chat_id=chat_id,
+            text=text,
+            reply_markup=InlineKeyboardMarkup(menu_button),
+            parse_mode=telegram.ParseMode.MARKDOWN
+        )
+        bot.delete_message(chat_id=chat_id, message_id=message_id)
+
+        deliver_chat_id = entry["DeliverTelegramID"]
+
+        cart = elasticpath.get_a_cart(token, chat_id)
+        cart_items = elasticpath.get_cart_items(token, chat_id)
+        cart_items_formatted = elasticpath.get_formatted_cart_items_without_description(cart, cart_items)
+
+        delivery_text = f'*Новый заказ!*\n\n_Адрес: {entry["Address"]}_\n\n' + cart_items_formatted
+        delivery_price = action[2]
+        if delivery_price:
+            delivery_text += f' + доставка *{delivery_price} ₽*'
+
+        bot.send_message(
+            chat_id=deliver_chat_id,
+            text=delivery_text,
+            parse_mode=telegram.ParseMode.MARKDOWN
+        )
+
+        bot.send_location(
+            chat_id=deliver_chat_id,
+            latitude=entry['Latitude'],
+            longitude=entry['Longitude']
+        )
+    
+    return 'HANDLE_FINISH'
 
 
 def handle_finish(bot, update):
