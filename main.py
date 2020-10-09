@@ -147,8 +147,18 @@ def handle_waiting_location(bot, update):
     for entry in entries:
         entry['distance'] = get_distance([latitude, longitude], entry['coordinates'])
 
-    entry_with_min_distance = min(entries, key=lambda x: x['distance'])
+    entry_with_min_distance = min(entries, key=lambda entry: entry['distance'])
     min_distance = entry_with_min_distance['distance']
+
+    customer_data = {
+        'Name': message.chat.first_name,
+        'Latitude': latitude,
+        'Longitude': longitude,
+        'PizzeiaID': entry_with_min_distance["id"]
+    }
+
+    create_entry_response = elasticpath.create_entry(token, 'Customer', customer_data)
+    customer_entry_id = create_entry_response['data']['id']
 
     keyboard = [[InlineKeyboardButton(f'◀️ В меню', callback_data='menu')]]
 
@@ -156,8 +166,8 @@ def handle_waiting_location(bot, update):
         text = f'Может, заберете пиццу из нашей пиццерии неподалеку? Она всего в *{int(min_distance*1000)}* метрах от вас, вот ее адрес: *{entry_with_min_distance["Address"]}*. Или доставим сами бесплатно, нам не сложно)'
         keyboard.insert(0,
             [
-                InlineKeyboardButton(f'Доставка', callback_data=f'delivery/{entry_with_min_distance["id"]}/'),
-                InlineKeyboardButton(f'Самовывоз', callback_data=f'self-delivery/{entry_with_min_distance["id"]}')
+                InlineKeyboardButton(f'Доставка', callback_data=f'delivery/{customer_entry_id}/'),
+                InlineKeyboardButton(f'Самовывоз', callback_data=f'self-delivery/{customer_entry_id}')
             ]
         )
     elif min_distance < 5:
@@ -165,8 +175,8 @@ def handle_waiting_location(bot, update):
         text = f'Доставка будет стоить *{delivery_price} ₽.*\nДоставляем или самовывоз?'
         keyboard.insert(0,
             [
-                InlineKeyboardButton(f'Доставка +{delivery_price} ₽', callback_data=f'delivery/{entry_with_min_distance["id"]}/{delivery_price}'),
-                InlineKeyboardButton(f'Самовывоз', callback_data=f'self-delivery/{entry_with_min_distance["id"]}')
+                InlineKeyboardButton(f'Доставка +{delivery_price} ₽', callback_data=f'delivery/{customer_entry_id}/{delivery_price}'),
+                InlineKeyboardButton(f'Самовывоз', callback_data=f'self-delivery/{customer_entry_id}')
             ]
         )
     elif min_distance < 20:
@@ -174,12 +184,12 @@ def handle_waiting_location(bot, update):
         text = f'Доставка будет стоить *{delivery_price} ₽.*\nДоставляем или самовывоз?'
         keyboard.insert(0,
             [
-                InlineKeyboardButton(f'Доставка +{delivery_price} ₽', callback_data=f'delivery/{entry_with_min_distance["id"]}/{delivery_price}'),
-                InlineKeyboardButton(f'Самовывоз', callback_data=f'self-delivery/{entry_with_min_distance["id"]}')
+                InlineKeyboardButton(f'Доставка +{delivery_price} ₽', callback_data=f'delivery/{customer_entry_id}/{delivery_price}'),
+                InlineKeyboardButton(f'Самовывоз', callback_data=f'self-delivery/{customer_entry_id}')
             ]
         )
     else:
-        text = f'Простите, но так далеко мы пиццу не доставим. Ближайшая пиццерия аж в *{min_distance:.1f} км* от вас.\nПоробуете ввести другой адрес?'
+        text = f'Простите, но так далеко мы пиццу не доставим. Ближайшая пиццерия аж в *{min_distance:.1f} км* от вас.\nПопробуете ввести другой адрес?'
         bot.send_message(
             chat_id = chat_id,
             text=text,
@@ -208,11 +218,15 @@ def handle_delivery(bot, update):
         return start(bot, update)
 
     token = elasticpath_token()
-    entry = elasticpath.get_entry(token, 'Pizzeria', action[1])
+    customer_entry_id = action[1]
+    customer_entry = elasticpath.get_entry(token, 'Customer', customer_entry_id)
+    pizzeria_entry_id = customer_entry['PizzeiaID']
+    pizzeria_entry = elasticpath.get_entry(token, 'Pizzeria', pizzeria_entry_id)
+
     menu_button = [[InlineKeyboardButton('◀️ Меню', callback_data='menu')]]
 
     if action[0] == 'self-delivery':
-        text = f'Адрес пиццерии:\n*{entry["Address"]}.*\n\n🍕 Ждем вас)'
+        text = f'Адрес пиццерии:\n*{pizzeria_entry["Address"]}.*\n\n🍕 Ждем вас)'
         bot.send_message(
             chat_id=chat_id,
             text=text,
@@ -231,13 +245,13 @@ def handle_delivery(bot, update):
         )
         bot.delete_message(chat_id=chat_id, message_id=message_id)
 
-        deliver_chat_id = entry["DeliverTelegramID"]
+        deliver_chat_id = pizzeria_entry["DeliverTelegramID"]
 
         cart = elasticpath.get_a_cart(token, chat_id)
         cart_items = elasticpath.get_cart_items(token, chat_id)
         cart_items_formatted = elasticpath.get_formatted_cart_items_without_description(cart, cart_items)
 
-        delivery_text = f'*Новый заказ!*\n\n_Адрес: {entry["Address"]}_\n\n' + cart_items_formatted
+        delivery_text = f'*Новый заказ!*\n\n' + cart_items_formatted
         delivery_price = action[2]
         if delivery_price:
             delivery_text += f' + доставка *{delivery_price} ₽*'
@@ -250,8 +264,8 @@ def handle_delivery(bot, update):
 
         bot.send_location(
             chat_id=deliver_chat_id,
-            latitude=entry['Latitude'],
-            longitude=entry['Longitude']
+            latitude=customer_entry['Latitude'],
+            longitude=customer_entry['Longitude']
         )
     
     return 'HANDLE_FINISH'

@@ -16,7 +16,7 @@ def get_oauth_access_token(db, client_id, client_secret, expires=3000):
     response = requests.post('https://api.moltin.com/oauth/access_token', data=data)
     response.raise_for_status()
     access_token = response.json()['access_token']
-    db.set('moltin_token', access_token, ex=expires)
+    db.set('elasticpath_token', access_token, ex=expires)
     return access_token
 
 
@@ -246,7 +246,7 @@ def get_formatted_cart_items_without_description(cart, cart_items):
     total_cost = cart['meta']['display_price']['with_tax']['formatted']
     items.append(f'\nИтого: *{total_cost} ₽*')
 
-    return '\n\n'.join(items)
+    return '\n'.join(items)
 
 
 def get_image_url(token, image_id):

@@ -6,7 +6,8 @@
             "Address": "string",
             "Alias": "string",
             "Longitude": "float",
-            "Latitude": "float"
+            "Latitude": "float",
+            "DeliverTelegramID": "integer",
         }
     },
     {
@@ -15,7 +16,8 @@
         "fields": {
             "Name": "string",
             "Longitude": "float",
-            "Latitude": "float"
+            "Latitude": "float",
+            "PizzeiaID": "string",
         }
     }
 ]
