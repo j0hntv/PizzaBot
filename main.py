@@ -237,6 +237,7 @@ def handle_delivery(bot, update):
 
     elif action[0] == 'delivery':
         text = f'Ваша пицца уже в пути! 🚀'
+        job_queue.run_once(check_delivey_time, 3600, context=chat_id)
         bot.send_message(
             chat_id=chat_id,
             text=text,
@@ -275,6 +276,11 @@ def handle_finish(bot, update):
     query = update.callback_query
     if query.data == 'menu':
         return start(bot, update)
+
+
+def check_delivey_time(bot, job):
+    text = 'Если курьер опаздывает - забирайте пиццу *бесплатно!*'
+    bot.send_message(chat_id=job.context, text=text, parse_mode=telegram.ParseMode.MARKDOWN)
 
 
 def handle_users_reply(bot, update):
@@ -369,6 +375,7 @@ if __name__ == '__main__':
     elasticpath_token = partial(elasticpath.get_oauth_access_token, db, CLIENT_ID, CLIENT_SECRET)
 
     updater = Updater(TELEGRAM_TOKEN)
+    job_queue = updater.job_queue
     dispatcher = updater.dispatcher
     dispatcher.add_handler(CallbackQueryHandler(handle_users_reply))
     dispatcher.add_handler(MessageHandler(Filters.text, handle_users_reply))
